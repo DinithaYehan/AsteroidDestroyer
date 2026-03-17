@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Asteroid Destroyer</title>
+
+<style>
+body{
+    background:black;
+    margin:0;
+    overflow:hidden;
+}
+
+#game{
+    width:400px;
+    height:600px;
+    border:3px solid white;
+    margin:auto;
+    position:relative;
+    background:radial-gradient(circle,#000010,#000000);
+}
+
+#player{
+    width:40px;
+    height:40px;
+    background:cyan;
+    position:absolute;
+    bottom:20px;
+    left:180px;
+    border-radius:5px;
+}
+
+.asteroid{
+    width:40px;
+    height:40px;
+    background:gray;
+    border-radius:50%;
+    position:absolute;
+    top:0;
+}
+
+#score{
+    color:white;
+    text-align:center;
+    font-size:22px;
+    font-family:Arial;
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="score">Score: 0</div>
+
+<div id="game">
+    <div id="player"></div>
+</div>
+
+<script>
+
+const game = document.getElementById("game")
+const player = document.getElementById("player")
+const scoreText = document.getElementById("score")
+
+let playerX = 180
+let score = 0
+
+// PLAYER MOVEMENT
+document.addEventListener("keydown", (e)=>{
+
+    if(e.key === "ArrowLeft"){
+        playerX -= 20
+    }
+
+    if(e.key === "ArrowRight"){
+        playerX += 20
+    }
+
+    if(playerX < 0) playerX = 0
+    if(playerX > 360) playerX = 360
+
+    player.style.left = playerX + "px"
+})
+
+
+// CREATE ASTEROIDS
+function createAsteroid(){
+
+    const asteroid = document.createElement("div")
+    asteroid.classList.add("asteroid")
+
+    let x = Math.random()*360
+    asteroid.style.left = x + "px"
+
+    game.appendChild(asteroid)
+
+    let top = 0
+
+    const fall = setInterval(()=>{
+
+        top += 5
+        asteroid.style.top = top + "px"
+
+        // COLLISION
+        let playerRect = player.getBoundingClientRect()
+        let asteroidRect = asteroid.getBoundingClientRect()
+
+        if(
+            asteroidRect.bottom > playerRect.top &&
+            asteroidRect.top < playerRect.bottom &&
+            asteroidRect.left < playerRect.right &&
+            asteroidRect.right > playerRect.left
+        ){
+            alert("Game Over! Score: "+score)
+            location.reload()
+        }
+
+        if(top > 600){
+            asteroid.remove()
+            score++
+            scoreText.innerText = "Score: " + score
+            clearInterval(fall)
+        }
+
+    },30)
+
+}
+
+setInterval(createAsteroid,1000)
+
+</script>
+
+</body>
+</html>
