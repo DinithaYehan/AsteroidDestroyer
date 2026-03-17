@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Asteroid Destroyer</title>
+
+<style>
+body{
+    background:black;
+    margin:0;
+    overflow:hidden;
+    font-family:Arial;
+}
+
+#score{
+    color:white;
+    text-align:center;
+    font-size:22px;
+    margin-top:10px;
+}
+
+#game{
+    width:400px;
+    height:600px;
+    border:3px solid white;
+    margin:auto;
+    position:relative;
+    overflow:hidden;
+    background:black;
+}
+
+/* STAR BACKGROUND */
+.star{
+    position:absolute;
+    width:2px;
+    height:2px;
+    background:white;
+    opacity:0.8;
+}
+
+/* PLAYER SPACESHIP */
+#player{
+    width:40px;
+    height:40px;
+    position:absolute;
+    bottom:20px;
+    left:180px;
+    font-size:35px;
+}
+
+/* ASTEROIDS */
+.asteroid{
+    position:absolute;
+    top:0;
+    font-size:30px;
+}
+
+/* EXPLOSION */
+.explosion{
+    position:absolute;
+    font-size:40px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="score">Score: 0</div>
+
+<div id="game">
+    <div id="player">🚀</div>
+</div>
+
+<script>
+
+const game = document.getElementById("game")
+const player = document.getElementById("player")
+const scoreText = document.getElementById("score")
+
+let playerX = 180
+let score = 0
+
+/* STAR BACKGROUND */
+function createStar(){
+    const star = document.createElement("div")
+    star.classList.add("star")
+
+    star.style.left = Math.random()*400 + "px"
+    star.style.top = "0px"
+
+    game.appendChild(star)
+
+    let top = 0
+
+    const fall = setInterval(()=>{
+        top += 2
+        star.style.top = top + "px"
+
+        if(top > 600){
+            star.remove()
+            clearInterval(fall)
+        }
+
+    },30)
+}
+
+setInterval(createStar,100)
+
+/* KEYBOARD MOVEMENT */
+document.addEventListener("keydown", (e)=>{
+
+    if(e.key === "ArrowLeft") playerX -= 25
+    if(e.key === "ArrowRight") playerX += 25
+
+    if(playerX < 0) playerX = 0
+    if(playerX > 360) playerX = 360
+
+    player.style.left = playerX + "px"
+})
+
+/* MOBILE TOUCH */
+game.addEventListener("touchmove",(e)=>{
+    const touchX = e.touches[0].clientX
+    const rect = game.getBoundingClientRect()
+    playerX = touchX - rect.left - 20
+    player.style.left = playerX + "px"
+})
+
+/* ASTEROIDS */
+function createAsteroid(){
+
+    const asteroid = document.createElement("div")
+    asteroid.classList.add("asteroid")
+    asteroid.innerHTML = "☄️"
+
+    let x = Math.random()*360
+    asteroid.style.left = x + "px"
+
+    game.appendChild(asteroid)
+
+    let top = 0
+
+    const fall = setInterval(()=>{
+
+        top += 5
+        asteroid.style.top = top + "px"
+
+        let playerRect = player.getBoundingClientRect()
+        let asteroidRect = asteroid.getBoundingClientRect()
+
+        if(
+            asteroidRect.bottom > playerRect.top &&
+            asteroidRect.top < playerRect.bottom &&
+            asteroidRect.left < playerRect.right &&
+            asteroidRect.right > playerRect.left
+        ){
+
+            explosion(asteroidRect.left, asteroidRect.top)
+
+            setTimeout(()=>{
+                alert("💥 Game Over!\nScore: "+score)
+                location.reload()
+            },300)
+
+            clearInterval(fall)
+        }
+
+        if(top > 600){
+            asteroid.remove()
+            score++
+            scoreText.innerText = "Score: " + score
+            clearInterval(fall)
+        }
+
+    },30)
+}
+
+setInterval(createAsteroid,1000)
+
+/* EXPLOSION EFFECT */
+function explosion(x,y){
+
+    const boom = document.createElement("div")
+    boom.classList.add("explosion")
+    boom.innerHTML = "💥"
+
+    boom.style.left = x + "px"
+    boom.style.top = y + "px"
+
+    game.appendChild(boom)
+
+    setTimeout(()=>{
+        boom.remove()
+    },400)
+
+}
+
+</script>
+
+</body>
+</html>r
