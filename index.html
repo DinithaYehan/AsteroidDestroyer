@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Asteroid Destroyer</title>
+    <style>
+        body {
+            background: #111;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #ui {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #0ff;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 420px;
+            height: 640px;
+            margin-top: 10px;
+            border: 2px solid #555;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* START SCREEN & Game Over */
+        #menu {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10;
+        }
+
+        .title {
+            font-size: 32px;
+            color: #0ff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 20px;
+            font-family: inherit;
+            color: #000;
+            background: #0ff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover { background: #fff; transform: scale(1.05); }
+
+        #autoBtn {
+            margin-top: 15px;
+            font-size: 16px;
+            background: #222;
+            color: #0ff;
+            border: 1px solid #0ff;
+            padding: 8px 16px;
+        }
+        #autoBtn.on {
+            background: #0ff;
+            color: #000;
+        }
+
+        /* Mobile controls overlay */
+        #mobileControls {
+            display: none;
+            position: absolute;
+            bottom: 0px;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    Score: <span id="scoreText">0</span> |
+    Level: <span id="levelText">1</span> |
+    Lives: <span id="livesText">3</span> |
+    Auto: <span id="autoStat" style="color:#aaa;">OFF</span>
+</div>
+
+<div id="gameContainer">
+    <canvas id="gameCanvas" width="420" height="640"></canvas>
+    <div id="menu">
+        <div class="title" id="menuTitle">ASTEROID<br>DESTROYER</div>
+        <div style="margin-bottom:20px; font-size:14px; color:#aaa;">Arrows to Move • Space to Shoot</div>
+        <button id="startBtn">START GAME</button>
+        <button id="autoBtn">AUTO SHOOT: OFF</button>
+    </div>
+    <div id="mobileControls"></div>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    
+    // UI Elements
+    const uiScore = document.getElementById("scoreText");
+    const uiLevel = document.getElementById("levelText");
+    const uiLives = document.getElementById("livesText");
+    const menu = document.getElementById("menu");
+    const startBtn = document.getElementById("startBtn");
+    const autoBtn = document.getElementById("autoBtn");
+    const autoStat = document.getElementById("autoStat");
+    const menuTitle = document.getElementById("menuTitle");
+    const mobileControls = document.getElementById("mobileControls");
+
+    // Game Constants
+    const CANV_W = canvas.width;
+    const CANV_H = canvas.height;
+    
+    // Game State
+    let score = 0;
+    let lives = 3;
+    let level = 1;
+    let isPlaying = false;
+    let frameId;
+    let lastTime = 0;
+
+    // Entity Arrays
+    let stars = [];
+    let bullets = [];
+    let enemies = []; // Asteroids & UFOs
+    let particles = []; // Explosions
+
+    // Key map
+    const keys = { Left: false, Right: false, Space: false, AutoShoot: false, ShootCooldown: 0 };
+
+    // Player Object
+    const player = {
+        x: CANV_W / 2,
+        y: CANV_H - 40,
+        w: 30, h: 40,
+        speed: 300 // pixels per second
+    };
+
+    // --- INIT & RESET ---
+    
+    function initStars() {
+        stars = [];
+        for(let i=0; i<60; i++) {
+            stars.push({
+                x: Math.random() * CANV_W,
+                y: Math.random() * CANV_H,
+                size: Math.random() * 2 + 1,
+                speed: Math.random() * 50 + 20
+            });
+        }
+    }
+
+    function resetGame() {
+        score = 0;
+        level = 1;
+        lives = 3;
+        player.x = CANV_W / 2;
+        bullets = [];
+        enemies = [];
+        particles = [];
+        updateUI();
+        initStars();
+    }
+
+    // --- EVENT LISTENERS ---
+    
+    window.addEventListener("keydown", e => {
+        if(e.code === "ArrowLeft") keys.Left = true;
+        if(e.code === "ArrowRight") keys.Right = true;
+        if(e.code === "Space") keys.Space = true;
+    });
+
+    window.addEventListener("keyup", e => {
+        if(e.code === "ArrowLeft") keys.Left = false;
+        if(e.code === "ArrowRight") keys.Right = false;
+        if(e.code === "Space") keys.Space = false;
+    });
+
+    startBtn.addEventListener("click", () => {
+        resetGame();
+        menu.style.display = "none";
+        mobileControls.style.display = "block";
+        isPlaying = true;
+        lastTime = performance.now();
+        frameId = requestAnimationFrame(gameLoop);
+    });
+
+    autoBtn.addEventListener("click", () => {
+        keys.AutoShoot = !keys.AutoShoot;
+        autoBtn.innerText = `AUTO SHOOT: ${keys.AutoShoot ? "ON" : "OFF"}`;
+        autoBtn.classList.toggle("on", keys.AutoShoot);
+        autoStat.innerText = keys.AutoShoot ? "ON" : "OFF";
+        autoStat.style.color = keys.AutoShoot ? "#0ff" : "#aaa";
+    });
+
+    // Mobile touch
+    mobileControls.addEventListener("touchmove", e => {
+        e.preventDefault(); // prevent scroll
+        if(!isPlaying) return;
+        const rect = canvas.getBoundingClientRect();
+        let touchX = e.touches[0].clientX - rect.left;
+        player.x = touchX;
+        if(player.x < player.w/2) player.x = player.w/2;
+        if(player.x > CANV_W - player.w/2) player.x = CANV_W - player.w/2;
+    }, {passive: false});
+
+    mobileControls.addEventListener("touchstart", e => {
+        if(!isPlaying) return;
+        // Tapping screen on mobile behaves like a brief Space press even if AutoShoot is off
+        keys.Space = true;
+    });
+    mobileControls.addEventListener("touchend", e => {
+        keys.Space = false;
+    });
+
+    // --- GAME LOGIC ---
+
+    function spawnEnemy() {
+        // Difficulty scaling
+        let spawnChance = 0.02 + (level * 0.005);
+        if (Math.random() < spawnChance) {
+            
+            // 80% Asteroid, 20% UFO
+            const isUFO = Math.random() > 0.8;
+            
+            let baseSpeed = 100 + (level * 15);
+            
+            enemies.push({
+                x: Math.random() * (CANV_W - 30) + 15,
+                y: -40,
+                type: isUFO ? 'ufo' : 'asteroid',
+                radius: isUFO ? 15 : 18 + Math.random()*10,
+                speed: baseSpeed + (Math.random() * 40 - 20),
+                hp: isUFO ? 2 : 1, // UFO takes 2 hits
+                points: isUFO ? 20 : 5,
+                xVelocity: isUFO ? (Math.random() > 0.5 ? 50 : -50) : 0 // UFOs moving sideways
+            });
+        }
+    }
+
+    function createExplosion(x, y, color) {
+        for(let i=0; i<15; i++){
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 200,
+                vy: (Math.random() - 0.5) * 200,
+                life: 1.0,
+                color: color
+            });
+        }
+    }
+
+    function checkCollisions() {
+        // Bullet vs Enemy
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            let hit = false;
+            
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                let e = enemies[j];
+                
+                // Simple circle collision
+                let dx = b.x - e.x;
+                let dy = b.y - e.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < e.radius + 4) { // 4 is bullet radius
+                    e.hp--;
+                    hit = true;
+                    createExplosion(b.x, b.y, "#ff0"); // tiny flash for bullet hit
+                    
+                    if (e.hp <= 0) {
+                        score += e.points;
+                        createExplosion(e.x, e.y, e.type==='ufo' ? "#0f0" : "#fa0");
+                        enemies.splice(j, 1);
+                        
+                        // Level up logic
+                        if (score > level * 100) {
+                            level++;
+                            uiLevel.innerText = level;
+                        }
+                    }
+                    break; // Bullet used up
+                }
+            }
+            if (hit) bullets.splice(i, 1);
+        }
+
+        // Enemy vs Player
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            let e = enemies[j];
+            
+            // Simple rect/circle collision approx
+            let testX = e.x;
+            let testY = e.y;
+            
+            // player bounding box
+            let px = player.x - player.w/2;
+            let py = player.y - player.h;
+            
+            if (e.x < px) testX = px; else if (e.x > px + player.w) testX = px + player.w;
+            if (e.y < py) testY = py; else if (e.y > py + player.h) testY = py + player.h;
+            
+            let dx = e.x - testX;
+            let dy = e.y - testY;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist <= e.radius - 2) { // smaller hitbox for fairness
+                createExplosion(player.x, player.y - 20, "#0ff");
+                createExplosion(e.x, e.y, "#f00");
+                enemies.splice(j, 1);
+                lives--;
+                
+                // Screen shake visual hack
+                canvas.style.transform = "translate(5px, 5px)";
+                setTimeout(() => canvas.style.transform = "none", 100);
+
+                if (lives <= 0) {
+                    gameOver();
+                }
+                break;
+            }
+        }
+    }
+
+    function update(dt) {
+        // Player move
+        if (keys.Left) player.x -= player.speed * dt;
+        if (keys.Right) player.x += player.speed * dt;
+        
+        // Bounds
+        if (player.x < player.w/2) player.x = player.w/2;
+        if (player.x > CANV_W - player.w/2) player.x = CANV_W - player.w/2;
+
+        // Player shoot
+        keys.ShootCooldown -= dt;
+        if ((keys.Space || keys.AutoShoot) && keys.ShootCooldown <= 0) {
+            bullets.push({ x: player.x, y: player.y - player.h, speed: 500 });
+            keys.ShootCooldown = 0.2; // 5 shots per sec max
+        }
+
+        // Bullets
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            bullets[i].y -= bullets[i].speed * dt;
+            if (bullets[i].y < -10) bullets.splice(i, 1);
+        }
+
+        // Enemies
+        spawnEnemy();
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let e = enemies[i];
+            e.y += e.speed * dt;
+            e.x += e.xVelocity * dt;
+            
+            // Bounce UFO off walls
+            if (e.type === 'ufo') {
+                if (e.x < e.radius || e.x > CANV_W - e.radius) e.xVelocity *= -1;
+            }
+
+            if (e.y > CANV_H + 50) enemies.splice(i, 1);
+        }
+
+        // Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt * 2; // fade speed
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        // Stars
+        stars.forEach(s => {
+            s.y += (s.speed + (level*5)) * dt;
+            if (s.y > CANV_H) {
+                s.y = 0;
+                s.x = Math.random() * CANV_W;
+            }
+        });
+
+        checkCollisions();
+        updateUI();
+    }
+
+    function updateUI() {
+        uiScore.innerText = score;
+        uiLives.innerText = lives;
+    }
+
+    function gameOver() {
+        isPlaying = false;
+        mobileControls.style.display = "none";
+        menuTitle.innerHTML = `<span style="color:#f00">GAME OVER</span><br><br><span style="font-size:20px;color:#fff">Score: ${score} | Level: ${level}</span>`;
+        startBtn.innerText = "PLAY AGAIN";
+        menu.style.display = "flex";
+    }
+
+    // --- RENDER ---
+
+    function draw() {
+        // Clear
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, CANV_W, CANV_H);
+
+        // Stars
+        ctx.fillStyle = "#fff";
+        stars.forEach(s => {
+            ctx.globalAlpha = Math.random() * 0.5 + 0.5; // twinkle
+            ctx.fillRect(s.x, s.y, s.size, s.size);
+        });
+        ctx.globalAlpha = 1.0;
+
+        // Particles
+        particles.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life < 0 ? 0 : p.life;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
+
+        // Bullets
+        ctx.fillStyle = "#0ff";
+        bullets.forEach(b => {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 3, 0, Math.PI*2);
+            ctx.fill();
+            // Glow
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#0ff";
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        });
+
+        // Enemies
+        enemies.forEach(e => {
+            if (e.type === 'asteroid') {
+                ctx.fillStyle = "#755";
+                ctx.beginPath();
+                // Draw rugged polygon instead of circle
+                let verts = 6;
+                for(let i=0; i<verts; i++) {
+                    let angle = (i/verts) * Math.PI*2;
+                    let radX = e.radius * (0.8 + (Math.sin(e.x*i)*0.2)); // pseudo random bumps based on pos
+                    let radY = e.radius * (0.8 + (Math.cos(e.y*i)*0.2));
+                    let vx = e.x + Math.cos(angle) * radX;
+                    let vy = e.y + Math.sin(angle) * radY;
+                    if(i===0) ctx.moveTo(vx,vy); else ctx.lineTo(vx,vy);
+                }
+                ctx.closePath();
+                ctx.fill();
+                
+                // Details
+                ctx.strokeStyle = "#433";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+            } else { // UFO
+                ctx.fillStyle = "#3c3";
+                ctx.beginPath();
+                ctx.ellipse(e.x, e.y, e.radius*1.5, e.radius*0.6, 0, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Cockpit
+                ctx.fillStyle = "#0ff";
+                ctx.beginPath();
+                ctx.arc(e.x, e.y - 4, e.radius*0.7, 0, Math.PI, true);
+                ctx.fill();
+            }
+        });
+
+        // Player (Simple Ship Geometry)
+        ctx.fillStyle = "#0cf";
+        ctx.beginPath();
+        // Nose
+        ctx.moveTo(player.x, player.y - player.h);
+        // Bottom Right
+        ctx.lineTo(player.x + player.w/2, player.y);
+        // Bottom Center indent
+        ctx.lineTo(player.x, player.y - 10);
+        // Bottom Left
+        ctx.lineTo(player.x - player.w/2, player.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Ship outline / details
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Thruster flame
+        if (keys.Left || keys.Right || Math.random() > 0.5) {
+            ctx.fillStyle = "#fa0";
+            ctx.beginPath();
+            ctx.moveTo(player.x - 5, player.y - 8);
+            ctx.lineTo(player.x + 5, player.y - 8);
+            ctx.lineTo(player.x, player.y + (Math.random() * 15 + 10)); // flicker
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+
+    // --- MAIN LOOP ---
+
+    function gameLoop(timestamp) {
+        if (!isPlaying) return;
+
+        let dt = (timestamp - lastTime) / 1000;
+        if (dt > 0.1) dt = 0.1; // cap delta time to prevent huge jumps if tab is backgrounded
+        lastTime = timestamp;
+
+        update(dt);
+        draw();
+
+        frameId = requestAnimationFrame(gameLoop);
+    }
+
+    // Initialize static background for menu
+    initStars();
+    draw();
+
+</script>
+
+</body>
+</html>
