@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Asteroid Destroyer</title>
+
+  <style>
+    body {
+      background: black;
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial;
+      color: white;
+    }
+
+    /* UI */
+    #ui {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 18px;
+    }
+
+    #game {
+      width: 420px;
+      height: 640px;
+      border: 3px solid white;
+      margin: auto;
+      position: relative;
+      overflow: hidden;
+      background: black;
+    }
+
+    /* PLAYER */
+    #player {
+      position: absolute;
+      bottom: 25px;
+      left: 190px;
+      font-size: 38px;
+    }
+
+    /* STARS */
+    .star {
+      position: absolute;
+      background: white;
+    }
+
+    /* ASTEROID */
+    .asteroid {
+      position: absolute;
+      font-size: 28px;
+    }
+
+    /* UFO */
+    .enemy {
+      position: absolute;
+      font-size: 30px;
+    }
+
+    /* BULLET */
+    .bullet {
+      position: absolute;
+      font-size: 18px;
+    }
+
+    /* POWERUP */
+    .power {
+      position: absolute;
+      font-size: 26px;
+    }
+
+    /* EXPLOSION */
+    .explosion {
+      position: absolute;
+      font-size: 40px;
+    }
+
+    /* START SCREEN */
+    #menu {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: black;
+      z-index: 10;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+
+    #shootBtn {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 28px;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="ui">
+    Score: <span id="score">0</span> |
+    Lives: <span id="lives">3</span> |
+    Highscore: <span id="high"></span>
+  </div>
+
+  <div id="game">
+
+    <div id="menu">
+      🚀 ASTEROID DESTROYER
+      <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <div id="player">🚀</div>
+
+    <button id="shootBtn">🔫</button>
+
+  </div>
+
+  <script>
+
+    const game = document.getElementById("game")
+    const player = document.getElementById("player")
+    const scoreText = document.getElementById("score")
+    const livesText = document.getElementById("lives")
+    const highText = document.getElementById("high")
+    const menu = document.getElementById("menu")
+    const shootBtn = document.getElementById("shootBtn")
+
+    let playerX = 190
+    let score = 0
+    let lives = 3
+    let gameRunning = false
+    let asteroidSpeed = 4
+    let rapidFire = false
+
+    let highscore = localStorage.getItem("spaceHigh") || 0
+    highText.innerText = highscore
+
+    /* START GAME */
+
+    function startGame() {
+      menu.style.display = "none"
+      shootBtn.style.display = "block"
+      gameRunning = true
+    }
+
+    /* STARFIELD */
+
+    function createStar() {
+
+      if (!gameRunning) return
+
+      const star = document.createElement("div")
+      star.classList.add("star")
+
+      let size = Math.random() * 3
+      star.style.width = size + "px"
+      star.style.height = size + "px"
+
+      star.style.left = Math.random() * 420 + "px"
+      star.style.top = "0px"
+
+      game.appendChild(star)
+
+      let top = 0
+
+      let speed = 1 + size
+
+      const fall = setInterval(() => {
+
+        top += speed
+        star.style.top = top + "px"
+
+        if (top > 640) {
+          star.remove()
+          clearInterval(fall)
+        }
+
+      }, 30)
+
+    }
+
+    setInterval(createStar, 80)
+
+    /* PLAYER MOVE */
+
+    document.addEventListener("keydown", e => {
+
+      if (!gameRunning) return
+
+      if (e.key === "ArrowLeft") playerX -= 30
+      if (e.key === "ArrowRight") playerX += 30
+      if (e.key === " ") shoot()
+
+      if (playerX < 0) playerX = 0
+      if (playerX > 380) playerX = 380
+
+      player.style.left = playerX + "px"
+
+    })
+
+    /* MOBILE */
+
+    game.addEventListener("touchmove", e => {
+
+      let rect = game.getBoundingClientRect()
+      playerX = e.touches[0].clientX - rect.left
+
+      player.style.left = playerX + "px"
+
+    })
+
+    shootBtn.onclick = shoot
+
+    /* SHOOT */
+
+    function shoot() {
+
+      const bullet = document.createElement("div")
+      bullet.classList.add("bullet")
+      bullet.innerHTML = "🔹"
+
+      bullet.style.left = playerX + 14 + "px"
+      bullet.style.bottom = "60px"
+
+      game.appendChild(bullet)
+
+      let bottom = 60
+
+      const move = setInterval(() => {
+
+        bottom += 10
+        bullet.style.bottom = bottom + "px"
+
+        if (bottom > 640) {
+          bullet.remove()
+          clearInterval(move)
+        }
+
+      }, 20)
+
+    }
+
+    /* ASTEROIDS */
+
+    function createAsteroid() {
+
+      if (!gameRunning) return
+
+      const asteroid = document.createElement("div")
+      asteroid.classList.add("asteroid")
+
+      const types = ["☄️", "🪨", "🛰️"]
+      asteroid.innerHTML = types[Math.floor(Math.random() * types.length)]
+
+      asteroid.style.left = Math.random() * 380 + "px"
+
+      game.appendChild(asteroid)
+
+      let top = 0
+
+      const fall = setInterval(() => {
+
+        top += asteroidSpeed
+        asteroid.style.top = top + "px"
+
+        checkBulletCollision(asteroid, fall)
+
+        let p = player.getBoundingClientRect()
+        let a = asteroid.getBoundingClientRect()
+
+        if (
+          a.bottom > p.top &&
+          a.top < p.bottom &&
+          a.left < p.right &&
+          a.right > p.left
+        ) {
+
+          damage()
+
+          asteroid.remove()
+          clearInterval(fall)
+
+        }
+
+        if (top > 640) {
+          asteroid.remove()
+          clearInterval(fall)
+        }
+
+      }, 30)
+
+    }
+
+    setInterval(createAsteroid, 900)
+
+    /* UFO ENEMY */
+
+    function createEnemy() {
+
+      if (!gameRunning) return
+
+      const enemy = document.createElement("div")
+      enemy.classList.add("enemy")
+      enemy.innerHTML = "👾"
+
+      enemy.style.left = Math.random() * 380 + "px"
+      enemy.style.top = "0px"
+
+      game.appendChild(enemy)
+
+      let top = 0
+
+      const move = setInterval(() => {
+
+        top += 3
+        enemy.style.top = top + "px"
+
+        checkBulletCollision(enemy, move)
+
+        if (top > 640) {
+          enemy.remove()
+          clearInterval(move)
+        }
+
+      }, 30)
+
+    }
+
+    setInterval(createEnemy, 6000)
+
+    /* BULLET COLLISION */
+
+    function checkBulletCollision(target, interval) {
+
+      const bullets = document.querySelectorAll(".bullet")
+
+      bullets.forEach(b => {
+
+        let t = target.getBoundingClientRect()
+        let br = b.getBoundingClientRect()
+
+        if (
+          t.bottom > br.top &&
+          t.top < br.bottom &&
+          t.left < br.right &&
+          t.right > br.left
+        ) {
+
+          explosion(t.left, t.top)
+
+          target.remove()
+          b.remove()
+
+          score += 5
+          scoreText.innerText = score
+
+          clearInterval(interval)
+
+        }
+
+      })
+
+    }
+
+    /* DAMAGE */
+
+    function damage() {
+
+      lives--
+      livesText.innerText = lives
+
+      shake()
+
+      if (lives <= 0) {
+
+        gameRunning = false
+
+        if (score > highscore) {
+          localStorage.setItem("spaceHigh", score)
+        }
+
+        setTimeout(() => {
+          alert("Game Over\nScore: " + score)
+          location.reload()
+        }, 300)
+
+      }
+
+    }
+
+    /* EXPLOSION */
+
+    function explosion(x, y) {
+
+      const boom = document.createElement("div")
+      boom.classList.add("explosion")
+      boom.innerHTML = "💥"
+
+      boom.style.left = x + "px"
+      boom.style.top = y + "px"
+
+      game.appendChild(boom)
+
+      setTimeout(() => boom.remove(), 400)
+
+    }
+
+    /* SCREEN SHAKE */
+
+    function shake() {
+
+      game.style.transform = "translate(5px)"
+
+      setTimeout(() => {
+        game.style.transform = "translate(-5px)"
+      }, 50)
+
+      setTimeout(() => {
+        game.style.transform = "translate(0)"
+      }, 100)
+
+    }
+
+    /* DIFFICULTY */
+
+    setInterval(() => {
+      asteroidSpeed += 0.4
+    }, 5000)
+
+  </script>
+
+</body>
+
+</html>
+l
