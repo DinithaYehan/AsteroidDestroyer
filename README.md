@@ -1,0 +1,100 @@
+# 🚀 Asteroid Destroyer
+
+A space-themed arcade shooter built from scratch with **Vanilla HTML, CSS, and JavaScript** — no frameworks, no dependencies, just pure web code.
+
+Originally developed as part of a [Hack Club](https://hackclub.com) project to learn game development fundamentals step by step, with each version commited as a milestone.
+
+---
+
+## 🎮 Play It
+
+Play Now Online [*Asteroid Destroyer*](https://dinithayehan.github.io/AsteroidDestroyer/)
+
+or fore local play :
+
+Open [`AsteroidDestroyer.html`](./AsteroidDestroyer.html) in any modern browser — no installation or server required.
+
+**Desktop Controls:**
+| Key | Action |
+|---|---|
+| `←` / `→` Arrow Keys | Move ship |
+| `Space` | Shoot |
+| `AUTO SHOOT` button | Toggle continuous fire |
+
+**Mobile:** Drag your finger to move the ship. Tap to shoot. Enable **Auto Shoot** from the start screen for the best mobile experience.
+
+---
+
+## ✨ Features
+
+- 🎯 **Two enemy types** — Asteroids (straight fall) and UFOs (zigzag movement, 2 HP)
+- 📈 **Infinite level scaling** — enemies spawn faster and move quicker as your score climbs
+- 🔫 **Auto-Shoot mode** — toggle continuous fire from the menu
+- 💥 **Particle explosions** — canvas-based burst effects on every hit
+- ⭐ **Twinkling starfield** — parallax scrolling background
+- 📱 **Mobile + Desktop** — full touch support with finger-drag controls
+- 💾 **Smooth 60 FPS** — powered by `requestAnimationFrame` and delta-time physics
+
+---
+
+## 📁 Repository Structure
+
+This repo documents the full iterative development journey of the game:
+
+| File | Commit Stage | Description |
+|---|---|---|
+| `1.html` | v1 — First Playground | Basic HTML box you can move left/right |
+| `2.html` | v2 — Basic Mechanics | Gray block asteroids, collision → game over alert |
+| `3.html` | v3 — Stars & Emojis | Emoji-based graphics (🚀☄️), scrolling starfield, touch moves |
+| `4.html` | v4 — Shooting & Lives | Spacebar shoots bullets, 3 lives, start screen |
+| `5.html` | v5 — Neon Polish | Neon CSS glow, UFO enemies with zigzag, level system |
+| `final.html` | v6 — Feature Complete | Polished DOM version with highscore and screen flash/shake |
+| `AsteroidDestroyer.html` | **Final — Canvas Optimized** | Full Canvas rewrite: 60FPS, particles, auto-shoot, mobile |
+
+---
+
+## 🛠️ Tech Stack
+
+- **HTML5 Canvas** — rendering engine for enemies, player, stars, and particles
+- **Vanilla JavaScript** — game loop with `requestAnimationFrame` + delta-time
+- **CSS** — UI styling, menu screens, and button transitions
+- No libraries. No build tools. Just open the file.
+
+---
+
+## 🧱 How It Was Built
+
+Starting from a single cyan box that could slide left and right in a `div`, the game was rebuilt in 7 stages:
+
+```
+1. Moveable block        →  Collision + game over
+2. DOM styling           →  Emoji sprites + starfield
+3. Shooting              →  Lives system + start screen
+4. Neon aesthetic        →  UFO enemies + level scaling
+5. Feature complete      →  Highscore + screen effects
+6. Canvas rewrite        →  60FPS, particles, auto-shoot, mobile-ready
+```
+
+Each `.html` file is a **self-contained snapshot** of that stage — you can open any of them independently.
+
+---
+
+## 🚀 Development
+
+No setup needed. Just clone and open:
+
+```bash
+git clone https://github.com/DinithaYehan/AsteroidDestroyer.git
+cd AsteroidDestroyer
+# Open AsteroidDestroyer.html in your browser
+```
+
+---
+
+## 📄 License
+
+MIT — free to use, fork, and remix.
+
+---
+
+*Made with ❤️ for [Hack Club](https://hackclub.com)*
